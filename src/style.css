@@ -1,0 +1,18 @@
+@font-face {
+    font-family: "dungeon-mode";
+    src:
+        local("dungeon-mode") format('truetype'),
+        url("dungeon-mode.ttf") format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+    background-color: black;
+}
+
+h1 {
+    font-family: "dungeon-mode";
+    text-align: center;
+    color: white;
+}

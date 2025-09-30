@@ -2,8 +2,7 @@ import type { Tile } from './tile-types';
 import { WALL_TILE } from './tile-types';
 import { Display } from 'rot-js';
 import * as ROT from 'rot-js';
-import { Entity } from './entity';
-import { Actor } from './entity';
+import { Entity, Actor, Item } from './entity';
 
 export class GameMap {  
 
@@ -83,6 +82,21 @@ export class GameMap {
 
   getActorAtLocation(x: number, y: number): Actor | undefined {
     return this.actors.find((a) => a.x === x && a.y === y);
+  }
+  
+  public get gameMap(): GameMap {
+    return this;
+  }
+
+  public get items(): Item[] {
+    return this.entities.filter((e) => e instanceof Item).map((e) => e as Item);
+  }
+
+  removeEntity(entity: Entity) {
+    const index = this.entities.indexOf(entity);
+    if (index >= 0){
+      this.entities.splice(index, 1);
+    }
   }
 
   render() {

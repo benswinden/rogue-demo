@@ -1,7 +1,7 @@
 import { FLOOR_TILE, WALL_TILE, Tile } from "./tile-types";
 import { GameMap } from "./game-map";
 import { Display } from "rot-js";
-import { Entity, spawnOrc, spawnTroll } from "./entity";
+import { Entity, spawnOrc, spawnTroll, spawnHealthPotion } from "./entity";
 
 class RectangularRoom {
     tiles: Tile[][];
@@ -60,6 +60,7 @@ export function generateDungeon(
     minSize: number,
     maxSize: number,
     maxMonsters: number,
+    maxItems: number,
     player: Entity,
     display: Display,
 ): GameMap {
@@ -83,7 +84,7 @@ export function generateDungeon(
 
         dungeon.addRoom(x, y, newRoom.tiles);
 
-        placeEntities(newRoom, dungeon, maxMonsters);
+        placeEntities(newRoom, dungeon, maxMonsters, maxItems);
 
         rooms.push(newRoom);
     }
@@ -153,20 +154,34 @@ function placeEntities(
     room: RectangularRoom,
     dungeon: GameMap,
     maxMonsters: number,
+    maxItems: number,
 ) {
     const numberOfMonstersToAdd = generateRandomNumber(0, maxMonsters);
+    const numberOfItemsToAdd = generateRandomNumber(0, maxItems);
+    const bounds = room.bounds;
 
     for (let i = 0; i < numberOfMonstersToAdd; i++) {
-        const bounds = room.bounds;
+        
         const x = generateRandomNumber(bounds.x1 + 1, bounds.x2 - 1);
         const y = generateRandomNumber(bounds.y1 + 1, bounds.y2 - 1);
 
         if (!dungeon.entities.some((e) => e.x == x && e.y == y)) {
             if (Math.random() < 0.8) {
-                dungeon.entities.push(spawnOrc(x, y));                
+                spawnOrc(dungeon, x, y);                
             } else {
-                dungeon.entities.push(spawnTroll(x, y));
+                spawnTroll(dungeon, x, y);
             }
+        }
+    }
+
+    for (let i = 0; i < numberOfItemsToAdd; i++) {
+        
+        const x = generateRandomNumber(bounds.x1 + 1, bounds.x2 - 1);
+        const y = generateRandomNumber(bounds.y1 + 1, bounds.y2 - 1);
+
+        if (!dungeon.entities.some((e) => e.x == x && e.y == y)) {
+
+            spawnHealthPotion(dungeon, x, y);
         }
     }
 }

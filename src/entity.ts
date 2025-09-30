@@ -1,5 +1,9 @@
 import { BaseAI, HostileEnemy } from "./components/ai";
 import { Fighter } from "./components/fighter";
+import { GameMap } from "./game-map";
+import { Consumable, HealingConsumable } from "./components/consumable";
+import { Inventory } from "./components/inventory";
+import { BaseComponent } from "./components/base-component";
 
 export enum RenderOrder {
   Corpse,
@@ -18,12 +22,36 @@ export class Entity {
     public name: string = '<Unnamed>',
     public blocksMovement: boolean = false,
     public renderOrder: RenderOrder = RenderOrder.Corpse,
-  ) {}
+    public parent: GameMap | BaseComponent | null = null,
+  ) {
+    if (this.parent && this.parent instanceof GameMap) {
+      this.parent.entities.push(this);
+    }
+  }
+
+  public get gameMap(): GameMap | undefined {
+    return this.parent?.gameMap;
+  }
 
   move (dx: number, dy: number) {
     this.x += dx;
     this.y += dy;
-  }  
+  }
+  
+  place (x: number, y: number, gameMap: GameMap | undefined) {
+    this.x = x;
+    this.y = y;
+
+    if (gameMap) {
+      if (this.parent) {
+        if (this.parent === gameMap) {
+          gameMap.removeEntity(this);
+        }
+      }
+      this.parent = gameMap;
+      gameMap.entities.push(this);
+    }
+  }
 }
 
 export class Actor extends Entity {
@@ -35,11 +63,14 @@ export class Actor extends Entity {
     public fg: string = '#fff',
     public bg: string = '#000',
     public name: string = '<Unnamed>',
-    public ai: BaseAI | null,
+    public ai: BaseAI | null,  
     public fighter: Fighter,
+    public inventory: Inventory,
+    public parent: GameMap | null = null
   ) {
-    super(x, y, char, fg, bg, name, true, RenderOrder.Actor);
-    this.fighter.entity = this;
+    super(x, y, char, fg, bg, name, true, RenderOrder.Actor, parent);
+    this.fighter.parent = this;
+    this.inventory.parent = this;
   }
 
   public get isAlive(): boolean {
@@ -47,7 +78,28 @@ export class Actor extends Entity {
   }
 }
 
-export function spawnPlayer(x: number, y: number): Actor {
+export class Item extends Entity {
+
+  constructor(
+    public x: number = 0,
+    public y: number = 0,
+    public char: string = '?',
+    public fg: string = '#fff',
+    public bg: string = '#000',
+    public name: string = '<Unnamed>',
+    public consumable: Consumable,
+    public parent: GameMap | BaseComponent | null = null,
+  ) {
+    super(x, y, char, fg, bg, name, false, RenderOrder.Item, parent);
+    this.consumable.parent = this;
+  }
+}
+
+export function spawnPlayer(
+    x: number,
+    y: number,
+    gameMap: GameMap | null = null,
+  ): Actor {
   return new Actor(
     x,
     y,
@@ -57,10 +109,12 @@ export function spawnPlayer(x: number, y: number): Actor {
     'Player',
     null,
     new Fighter(30, 2, 5),
+    new Inventory(26),
+    gameMap
   );
 }
 
-export function spawnOrc(x: number, y: number): Entity {
+export function spawnOrc(gameMap: GameMap, x: number, y: number): Entity {
   return new Actor(
     x,
     y,
@@ -70,10 +124,12 @@ export function spawnOrc(x: number, y: number): Entity {
     'Orc',
     new HostileEnemy(),
     new Fighter(10, 0, 3),
+    new Inventory(0),
+    gameMap,
   );
 }
   
-export function spawnTroll(x: number, y: number): Entity {
+export function spawnTroll(gameMap: GameMap, x: number, y: number): Entity {
   return new Actor(
     x,
     y,
@@ -83,5 +139,24 @@ export function spawnTroll(x: number, y: number): Entity {
     'Troll',
     new HostileEnemy(),
     new Fighter(16, 1, 4),
+    new Inventory(0),
+    gameMap,
+  );
+}
+
+export function spawnHealthPotion(
+  gameMap: GameMap,
+  x: number,
+  y: number,
+): Entity {
+  return new Item(
+    x,
+    y,
+    '!',
+    '#7F00FF',
+    '#000',
+    'Health Potion',
+    new HealingConsumable(4),
+    gameMap,
   );
 }
