@@ -1,7 +1,7 @@
 import { FLOOR_TILE, WALL_TILE, Tile } from "./tile-types";
 import { GameMap } from "./game-map";
 import { Display } from "rot-js";
-import { Entity, spawnOrc, spawnTroll, spawnHealthPotion } from "./entity";
+import { Entity, spawnOrc, spawnTroll, spawnHealthPotion, spawnLightningScroll, spawnConfusionScroll, spawnFireballScroll } from "./entity";
 
 class RectangularRoom {
     tiles: Tile[][];
@@ -139,7 +139,7 @@ function* connectRooms(
     }
 }
 
-function generateRandomNumber(min: number, max: number) {
+export function generateRandomNumber(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
@@ -175,13 +175,19 @@ function placeEntities(
     }
 
     for (let i = 0; i < numberOfItemsToAdd; i++) {
-        
         const x = generateRandomNumber(bounds.x1 + 1, bounds.x2 - 1);
         const y = generateRandomNumber(bounds.y1 + 1, bounds.y2 - 1);
 
         if (!dungeon.entities.some((e) => e.x == x && e.y == y)) {
-
-            spawnHealthPotion(dungeon, x, y);
+            if (Math.random() < 0.7) {
+                spawnHealthPotion(dungeon, x, y);
+            } else if (Math.random() < 0.8) {
+                spawnFireballScroll(dungeon, x, y);
+            } else if (Math.random() < 0.9) {
+                spawnConfusionScroll(dungeon, x, y);
+            } else {
+                spawnLightningScroll(dungeon, x, y);
+            }
         }
     }
 }
