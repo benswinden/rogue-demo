@@ -1,4 +1,4 @@
-import { FLOOR_TILE, WALL_TILE, Tile } from "./tile-types";
+import { STARS_DOWN_TILE, FLOOR_TILE, WALL_TILE, Tile } from "./tile-types";
 import { GameMap } from "./game-map";
 import { Display } from "rot-js";
 import { Entity, spawnOrc, spawnTroll, spawnHealthPotion, spawnLightningScroll, spawnConfusionScroll, spawnFireballScroll } from "./entity";
@@ -68,6 +68,7 @@ export function generateDungeon(
     const dungeon = new GameMap(mapWidth, mapHeight, display, [player]);
 
     const rooms: RectangularRoom[] = [];
+    let centerOfLastRoom: [number, number] = [0, 0];
 
     for (let count = 0; count < maxRooms; count++) {
         const width = generateRandomNumber(minSize, maxSize);
@@ -87,6 +88,7 @@ export function generateDungeon(
         placeEntities(newRoom, dungeon, maxMonsters, maxItems);
 
         rooms.push(newRoom);
+        centerOfLastRoom = newRoom.center;
     }
 
     const startPoint = rooms[0].center;
@@ -101,6 +103,9 @@ export function generateDungeon(
             dungeon.tiles[tile[1]][tile[0]] = {...FLOOR_TILE};
         }
     }
+    
+    dungeon.tiles[centerOfLastRoom[1]][centerOfLastRoom[0]] = { ...STARS_DOWN_TILE };
+    dungeon.downstarsLocation = centerOfLastRoom;
 
     return dungeon;
 }

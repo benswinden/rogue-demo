@@ -4,6 +4,7 @@ import { GameMap } from "./game-map";
 import { Consumable, HealingConsumable, LightningConsumable, ConfusionConsumable, FireballDamageConsumable } from "./components/consumable";
 import { Inventory } from "./components/inventory";
 import { BaseComponent } from "./components/base-component";
+import { Level } from "./components/level";
 
 export enum RenderOrder {
   Corpse,
@@ -70,6 +71,7 @@ export class Actor extends Entity {
     public ai: BaseAI | null,  
     public fighter: Fighter,
     public inventory: Inventory,
+    public level: Level,
     public parent: GameMap | null = null
   ) {
     super(x, y, char, fg, bg, name, true, RenderOrder.Actor, parent);
@@ -104,7 +106,7 @@ export function spawnPlayer(
     y: number,
     gameMap: GameMap | null = null,
   ): Actor {
-  return new Actor(
+  const player = new Actor(
     x,
     y,
     '@',
@@ -114,11 +116,14 @@ export function spawnPlayer(
     null,
     new Fighter(30, 2, 5),
     new Inventory(26),
+    new Level(20),
     gameMap
   );
+  player.level.parent = player;
+  return player;
 }
 
-export function spawnOrc(gameMap: GameMap, x: number, y: number): Entity {
+export function spawnOrc(gameMap: GameMap, x: number, y: number): Actor {
   return new Actor(
     x,
     y,
@@ -129,11 +134,12 @@ export function spawnOrc(gameMap: GameMap, x: number, y: number): Entity {
     new HostileEnemy(),
     new Fighter(10, 0, 3),
     new Inventory(0),
+    new Level(0, 35),
     gameMap,
   );
 }
   
-export function spawnTroll(gameMap: GameMap, x: number, y: number): Entity {
+export function spawnTroll(gameMap: GameMap, x: number, y: number): Actor {
   return new Actor(
     x,
     y,
@@ -144,15 +150,12 @@ export function spawnTroll(gameMap: GameMap, x: number, y: number): Entity {
     new HostileEnemy(),
     new Fighter(16, 1, 4),
     new Inventory(0),
+    new Level(0, 100),
     gameMap,
   );
 }
 
-export function spawnHealthPotion(
-  gameMap: GameMap,
-  x: number,
-  y: number,
-): Entity {
+export function spawnHealthPotion(gameMap: GameMap, x: number, y: number): Item {
   return new Item(
     x,
     y,
@@ -165,7 +168,7 @@ export function spawnHealthPotion(
   );
 }
 
-export function spawnLightningScroll(gameMap: GameMap, x: number, y: number) {
+export function spawnLightningScroll(gameMap: GameMap, x: number, y: number): Item {
   return new Item(
     x,
     y,
@@ -178,7 +181,7 @@ export function spawnLightningScroll(gameMap: GameMap, x: number, y: number) {
   );
 }
 
-export function spawnConfusionScroll(gameMap: GameMap, x: number, y: number) {
+export function spawnConfusionScroll(gameMap: GameMap, x: number, y: number): Item {
   return new Item(
     x,
     y,
@@ -191,7 +194,7 @@ export function spawnConfusionScroll(gameMap: GameMap, x: number, y: number) {
   );
 }
 
-export function spawnFireballScroll(gameMap: GameMap, x: number, y: number) {
+export function spawnFireballScroll(gameMap: GameMap, x: number, y: number): Item {
   return new Item(
     x,
     y,

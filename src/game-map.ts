@@ -7,6 +7,7 @@ import { Entity, Actor, Item } from './entity';
 export class GameMap {  
 
   tiles: Tile[][];
+  downstarsLocation: [number, number];
 
   constructor(
     public width: number, 
@@ -24,6 +25,7 @@ export class GameMap {
       }
       this.tiles[y] = row;
     }
+    this.downstarsLocation = [0, 0];
   }
 
   addRoom(x: number, y: number, roomTiles: Tile[][]) {

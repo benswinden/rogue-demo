@@ -43,6 +43,7 @@ export class Fighter extends BaseComponent {
     }
 
     die() {
+
         if (!this.parent) return;
 
         let deathMessage = '';
@@ -62,6 +63,8 @@ export class Fighter extends BaseComponent {
         this.parent.name = `Remains of ${this.parent.name}`;
         this.parent.renderOrder = RenderOrder.Corpse;
 
-        window.engine.messageLog.addMessage(deathMessage, fg);
+        window.messageLog.addMessage(deathMessage, fg);
+
+        window.engine.player.level.addXp(this.parent.level.xpGiven);
     }
 }

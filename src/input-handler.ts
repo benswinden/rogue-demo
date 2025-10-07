@@ -6,9 +6,13 @@ import {
   LogAction,
   PickupAction,
   WaitAction,
+  TakeStairsAction,
 } from './actions';
 import { Colors } from './colors';
 import { Engine } from './engine';
+import { renderFrameWithTitle } from './render-functions';
+
+
 export enum InputState {
   Game,
   Dead,
@@ -70,12 +74,22 @@ const MOVE_KEYS: DirectionMap = {
 };
 
 export abstract class BaseInputHandler {
+  
   nextHandler: BaseInputHandler;
+  mousePosition: [number, number];
+  logCursorPosition: number;
+  
   protected constructor(public inputState: InputState = InputState.Game) {
     this.nextHandler = this;
+    this.mousePosition = [0, 0];
+    this.logCursorPosition = window.messageLog.messages.length - 1;
   }
 
   abstract handleKeyboardInput(event: KeyboardEvent): Action | null;
+
+  handleMouseMovement(position: [number, number]) {
+    this.mousePosition = position;
+  }
 
   onRender(_display: Display) {}
 }
@@ -87,7 +101,14 @@ export class GameInputHandler extends BaseInputHandler {
   }
 
   handleKeyboardInput(event: KeyboardEvent): Action | null {
+    
     if (window.engine.player.fighter.hp > 0) {
+
+      if (window.engine.player.level.requiresLevelUp) {
+        this.nextHandler = new LevelUpEventHandler();
+        return null;
+      }
+
       if (event.key in MOVE_KEYS) {
         const [dx, dy] = MOVE_KEYS[event.key];
         return new BumpAction(dx, dy);
@@ -108,12 +129,19 @@ export class GameInputHandler extends BaseInputHandler {
       if (event.key === 'i') {
         this.nextHandler = new InventoryInputHandler(InputState.UseInventory);
       }
+      // Character
+      if (event.key === 'r') {
+        this.nextHandler = new CharacterScreenInputHandler();
+      }
       // Drop menu
       if (event.key === 'o') {
         this.nextHandler = new InventoryInputHandler(InputState.DropInventory);
       }
       if (event.key === '/') {
         this.nextHandler = new LookHandler();
+      }
+      if (event.key === '>') {
+        return new TakeStairsAction();
       }
     }
 
@@ -122,19 +150,21 @@ export class GameInputHandler extends BaseInputHandler {
 }
 
 export class LogInputHandler extends BaseInputHandler {
+
   constructor() {
     super(InputState.Log);
   }
 
   handleKeyboardInput(event: KeyboardEvent): Action | null {
+
     if (event.key === 'Home') {
-      return new LogAction(() => (window.engine.logCursorPosition = 0));
+      return new LogAction(() => (this.logCursorPosition = 0));
     }
     if (event.key === 'End') {
       return new LogAction(
         () =>
-        (window.engine.logCursorPosition =
-          window.engine.messageLog.messages.length - 1),
+        (this.logCursorPosition =
+          window.messageLog.messages.length - 1),
       );
     }
 
@@ -145,21 +175,22 @@ export class LogInputHandler extends BaseInputHandler {
     }
 
     return new LogAction(() => {
-      if (scrollAmount < 0 && window.engine.logCursorPosition === 0) {
-        window.engine.logCursorPosition =
-          window.engine.messageLog.messages.length - 1;
+
+      if (scrollAmount < 0 && this.logCursorPosition === 0) {
+        this.logCursorPosition =
+          window.messageLog.messages.length - 1;
       } else if (
         scrollAmount > 0 &&
-        window.engine.logCursorPosition ===
-        window.engine.messageLog.messages.length - 1
+        this.logCursorPosition ===
+        window.messageLog.messages.length - 1
       ) {
-        window.engine.logCursorPosition = 0;
+        this.logCursorPosition = 0;
       } else {
-        window.engine.logCursorPosition = Math.max(
+        this.logCursorPosition = Math.max(
           0,
           Math.min(
-            window.engine.logCursorPosition + scrollAmount,
-            window.engine.messageLog.messages.length - 1,
+            this.logCursorPosition + scrollAmount,
+            window.messageLog.messages.length - 1,
           ),
         );
       }
@@ -187,7 +218,7 @@ export class InventoryInputHandler extends BaseInputHandler {
             return new DropItem(item);
           }
         } else {
-          window.engine.messageLog.addMessage('Invalid entry.', Colors.Invalid);
+          window.messageLog.addMessage('Invalid entry.', Colors.Invalid);
           return null;
         }
       }
@@ -202,7 +233,7 @@ export abstract class SelectIndexHandler extends BaseInputHandler {
   protected constructor() {
     super(InputState.Target);
     const { x, y } = window.engine.player;
-    window.engine.mousePosition = [x, y];
+    this.mousePosition = [x, y];
   }
 
   handleKeyboardInput(event: KeyboardEvent): Action | null {
@@ -214,16 +245,16 @@ export abstract class SelectIndexHandler extends BaseInputHandler {
       if (event.ctrlKey) modifier = 10;
       if (event.altKey) modifier = 20;
 
-      let [x, y] = window.engine.mousePosition;
+      let [x, y] = this.mousePosition;
       const [dx, dy] = moveAmount;
       x += dx * modifier;
       y += dy * modifier;
       x = Math.max(0, Math.min(x, Engine.MAP_WIDTH - 1));
       y = Math.max(0, Math.min(y, Engine.MAP_HEIGHT - 1));
-      window.engine.mousePosition = [x, y];
+      this.mousePosition = [x, y];
       return null;
     } else if (event.key === 'Enter') {
-      let [x, y] = window.engine.mousePosition;
+      let [x, y] = this.mousePosition;
       return this.onIndexSelected(x, y);
     }
 
@@ -263,21 +294,119 @@ export class AreaRangedAttackHandler extends SelectIndexHandler {
     super();
   }
 
-  onRender(display: Display) {
-    const startX = window.engine.mousePosition[0] - this.radius - 1;
-    const startY = window.engine.mousePosition[1] - this.radius - 1;
+onRender(display: Display) {
+  const startX = this.mousePosition[0] - this.radius - 1;
+  const startY = this.mousePosition[1] - this.radius - 1;
 
-    for (let x = startX; x < startX + this.radius ** 2; x++) {
-      for (let y = startY; y < startY + this.radius ** 2; y++) {
-        const data = display._data[`${x}, ${y}`];
-        const char = data ? data[2] || ' ' : ' ';
-        display.drawOver(x, y, char[0], '#fff', '#f00');
-      }
+  for (let x = startX; x < startX + this.radius ** 2; x++) {
+    for (let y = startY; y < startY + this.radius ** 2; y++) {
+      display.drawOver(x, y, null, '#fff', '#f00');
     }
   }
+}
 
   onIndexSelected(x: number, y: number): Action | null {
     this.nextHandler = new GameInputHandler();
     return this.callback(x, y);
   }
 }
+
+export class LevelUpEventHandler extends BaseInputHandler {
+
+  constructor() {
+    super();
+  }
+
+  onRender(display: Display) {
+
+    let x = 0;
+    if (window.engine.player.x <= 30) {
+      x = 40;
+    }
+
+    renderFrameWithTitle(x, 0, 35, 8, 'Level Up');
+
+      display.drawText(x + 1, 1, 'Congratulations! You level up!');
+      display.drawText(x + 1, 2, 'Select an attribute to increase.');
+
+      display.drawText(
+        x + 1,
+        4,
+        `a) Constitution (+20 HP, from ${window.engine.player.fighter.maxHp})`,
+      );
+      display.drawText(
+        x + 1,
+        5,
+        `b) Strength (+1 attack, from ${window.engine.player.fighter.power})`,
+      );
+      display.drawText(
+        x + 1,
+        6,
+        `c) Agility (+1 defense, from ${window.engine.player.fighter.defense})`,
+      );
+    }
+
+    handleKeyboardInput(event: KeyboardEvent): Action | null {
+      if (event.key === 'a') {
+        window.engine.player.level.increaseMaxHp();
+      } else if (event.key === 'b') {
+        window.engine.player.level.increasePower();
+      } else if (event.key === 'c') {
+        window.engine.player.level.increaseDefense();
+      } else {
+        window.messageLog.addMessage('Invalid entry.', Colors.Invalid);
+        return null;
+      }
+
+      this.nextHandler = new GameInputHandler();
+      return null;
+    }
+  }
+
+  export class CharacterScreenInputHandler extends BaseInputHandler {
+
+    constructor() {
+      super();
+    }
+
+    onRender(display: Display) {
+      
+      const x = window.engine.player.x <= 30 ? 40 : 0;
+      const y = 0;
+      const title = 'Character Information';
+      const width = title.length + 4;
+
+      renderFrameWithTitle(x, y, width, 7, title);
+
+      display.drawText(
+        x + 1,
+        y + 1,
+        `Level: ${window.engine.player.level.currentLevel}`,
+      );
+      display.drawText(
+        x + 1,
+        y + 2,
+        `XP: ${window.engine.player.level.currentXp}`,
+      );
+      display.drawText(
+        x + 1,
+        y + 3,
+        `XP for next Level: ${window.engine.player.level.experienceToNextLevel}`,
+      );
+      display.drawText(
+        x + 1,
+        y + 4,
+        `Attack: ${window.engine.player.fighter.power}`,
+      );
+      display.drawText(
+        x + 1,
+        y + 5,
+        `Defense: ${window.engine.player.fighter.defense}`,
+      );
+    }
+
+    handleKeyboardInput(_event: KeyboardEvent): Action | null {
+      this.nextHandler = new GameInputHandler();
+      return null;
+    }
+  }
